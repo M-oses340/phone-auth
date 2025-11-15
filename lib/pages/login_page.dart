@@ -20,6 +20,7 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   @override
   void codeUpdated() {
+    if (!mounted) return; // Prevent using controller after dispose
     setState(() {
       _otpController.text = code!;
     });
@@ -29,7 +30,8 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   Future<void> _sendOtp() async {
     if (!_phoneFormKey.currentState!.validate()) return;
-    // Changed prefix to +254 for Kenya
+
+    // Use +254 prefix for Kenya
     String phone = "+254${_phoneController.text}";
 
     try {
@@ -37,6 +39,7 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
       await SmsAutoFill().listenForCode(); // Auto-fill listener
       _showOtpDialog();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -51,9 +54,14 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
         verificationId: _verificationId!,
         smsCode: _otpController.text,
       );
+
+      if (!mounted) return;
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomePage()));
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Invalid OTP: $e")),
       );
@@ -61,28 +69,31 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
   }
 
   void _showOtpDialog() {
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text("OTP Verification"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Enter 6-digit OTP"),
-            const SizedBox(height: 10),
-            Form(
-              key: _otpFormKey,
-              child: PinFieldAutoFill(
-                codeLength: 6,
-                controller: _otpController,
-                decoration: UnderlineDecoration(
-                  textStyle: const TextStyle(fontSize: 20),
-                  colorBuilder: FixedColorBuilder(Colors.grey),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Enter 6-digit OTP"),
+              const SizedBox(height: 10),
+              Form(
+                key: _otpFormKey,
+                child: PinFieldAutoFill(
+                  codeLength: 6,
+                  controller: _otpController,
+                  decoration: UnderlineDecoration(
+                    textStyle: const TextStyle(fontSize: 20),
+                    colorBuilder: FixedColorBuilder(Colors.grey),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: _submitOtp, child: const Text("Submit")),
@@ -93,7 +104,7 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   @override
   void dispose() {
-    cancel();
+    cancel(); // Cancel CodeAutoFill listener
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -109,15 +120,20 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                  child: Image.asset("images/login.png", fit: BoxFit.cover)),
+                child: Image.asset("images/login.png", fit: BoxFit.cover),
+              ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Welcome Back 👋",
-                        style:
-                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Welcome Back 👋",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     const Text("Enter your phone number to continue."),
                     const SizedBox(height: 20),
@@ -127,13 +143,11 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
-                          // Changed prefix to +254 for Kenya
                           prefixText: "+254 ",
                           labelText: "Phone Number",
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                        (v == null || v.length != 9) // Kenyan numbers are 9 digits after +254
+                        validator: (v) => (v == null || v.length != 9)
                             ? "Enter 9 digits"
                             : null,
                       ),
@@ -145,8 +159,9 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
                       child: ElevatedButton(
                         onPressed: _sendOtp,
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.yellow,
-                            foregroundColor: Colors.black),
+                          backgroundColor: Colors.yellow,
+                          foregroundColor: Colors.black,
+                        ),
                         child: const Text("Send OTP"),
                       ),
                     ),
