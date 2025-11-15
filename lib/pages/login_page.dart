@@ -11,16 +11,16 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with CodeAutoFill {
-  TextEditingController _phoneController = TextEditingController();
-  TextEditingController _otpController = TextEditingController();
-
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
   String? _verificationId;
+
   final _phoneFormKey = GlobalKey<FormState>();
   final _otpFormKey = GlobalKey<FormState>();
 
   @override
   void codeUpdated() {
-    if (!mounted) return; // Prevent using controller after dispose
+    if (!mounted) return;
     setState(() {
       _otpController.text = code!;
     });
@@ -31,18 +31,16 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
   Future<void> _sendOtp() async {
     if (!_phoneFormKey.currentState!.validate()) return;
 
-    // Use +254 prefix for Kenya
     String phone = "+254${_phoneController.text}";
 
     try {
       _verificationId = await AuthService.sendOtp(phone);
-      await SmsAutoFill().listenForCode(); // Auto-fill listener
+      await SmsAutoFill().listenForCode();
       _showOtpDialog();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -57,14 +55,11 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
       if (!mounted) return;
       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
+          context, MaterialPageRoute(builder: (_) => const HomePage()));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid OTP: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Invalid OTP: $e")));
     }
   }
 
@@ -104,9 +99,9 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   @override
   void dispose() {
-    cancel(); // Cancel CodeAutoFill listener
-    _phoneController.dispose();
+    cancel(); // cancel CodeAutoFill listener
     _otpController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -117,22 +112,17 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
         child: SizedBox(
           height: MediaQuery.of(context).size.height,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Image.asset("images/login.png", fit: BoxFit.cover),
-              ),
+                  child: Image.asset("images/login.png", fit: BoxFit.cover)),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       "Welcome Back 👋",
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                      TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     const Text("Enter your phone number to continue."),
@@ -147,9 +137,8 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
                           labelText: "Phone Number",
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) => (v == null || v.length != 9)
-                            ? "Enter 9 digits"
-                            : null,
+                        validator: (v) =>
+                        (v == null || v.length != 9) ? "Enter 9 digits" : null,
                       ),
                     ),
                     const SizedBox(height: 20),

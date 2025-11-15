@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
-import '../controllers/auth_service.dart';
+import 'package:phone_auth_firebase/controllers/auth_service.dart';
+import 'login_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -15,19 +17,17 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("You are logged in!"),
+            const Text("You are now logged in."),
             const SizedBox(height: 20),
             OutlinedButton(
-              onPressed: () async {
-                await AuthService.logout();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SizedBox.shrink()),
-                      (_) => false,
-                );
-              },
-              child: const Text("Logout"),
-            )
+                onPressed: () async {
+                  await AuthService.logout();
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LoginPage()));
+                },
+                child: const Text("Logout"))
           ],
         ),
       ),
