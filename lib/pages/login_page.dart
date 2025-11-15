@@ -20,7 +20,7 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   @override
   void codeUpdated() {
-    if (!mounted) return;
+    if (!mounted) return; // Prevent using controller after dispose
     setState(() {
       _otpController.text = code!;
     });
@@ -31,11 +31,11 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
   Future<void> _sendOtp() async {
     if (!_phoneFormKey.currentState!.validate()) return;
 
-    String phone = "+254${_phoneController.text}";
+    String phone = "+254${_phoneController.text}"; // Kenya prefix
 
     try {
       _verificationId = await AuthService.sendOtp(phone);
-      await SmsAutoFill().listenForCode();
+      await SmsAutoFill().listenForCode(); // Start auto-fill
       _showOtpDialog();
     } catch (e) {
       if (!mounted) return;
@@ -55,7 +55,9 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
       if (!mounted) return;
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomePage()));
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -65,6 +67,7 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
 
   void _showOtpDialog() {
     if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -91,7 +94,11 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
           ),
         ),
         actions: [
-          TextButton(onPressed: _submitOtp, child: const Text("Submit")),
+          TextButton(
+              onPressed: () {
+                _submitOtp();
+              },
+              child: const Text("Submit")),
         ],
       ),
     );
@@ -100,64 +107,73 @@ class _LoginPageState extends State<LoginPage> with CodeAutoFill {
   @override
   void dispose() {
     cancel(); // cancel CodeAutoFill listener
-    _otpController.dispose();
     _phoneController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: Column(
-            children: [
-              Expanded(
-                  child: Image.asset("images/login.png", fit: BoxFit.cover)),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Welcome Back 👋",
-                      style:
-                      TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Image.asset(
+                      "images/login.png",
+                      fit: BoxFit.cover,
                     ),
-                    const SizedBox(height: 6),
-                    const Text("Enter your phone number to continue."),
-                    const SizedBox(height: 20),
-                    Form(
-                      key: _phoneFormKey,
-                      child: TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          prefixText: "+254 ",
-                          labelText: "Phone Number",
-                          border: OutlineInputBorder(),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          "Welcome Back 👋",
+                          style: TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.bold),
                         ),
-                        validator: (v) =>
-                        (v == null || v.length != 9) ? "Enter 9 digits" : null,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _sendOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow,
-                          foregroundColor: Colors.black,
+                        const SizedBox(height: 6),
+                        const Text("Enter your phone number to continue."),
+                        const SizedBox(height: 20),
+                        Form(
+                          key: _phoneFormKey,
+                          child: TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              prefixText: "+254 ",
+                              labelText: "Phone Number",
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (v) => (v == null || v.length != 9)
+                                ? "Enter 9 digits"
+                                : null,
+                          ),
                         ),
-                        child: const Text("Send OTP"),
-                      ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _sendOtp,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow,
+                              foregroundColor: Colors.black,
+                            ),
+                            child: const Text("Send OTP"),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -1,28 +1,31 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class AuthService {
   static FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Send OTP
   static Future<String> sendOtp(String phone) async {
-    String verificationId = '';
+    Completer<String> completer = Completer();
+
     await _auth.verifyPhoneNumber(
       phoneNumber: phone,
       verificationCompleted: (PhoneAuthCredential credential) async {
-        // Auto sign-in on some devices
+        // Auto sign-in if possible
         await _auth.signInWithCredential(credential);
       },
       verificationFailed: (FirebaseAuthException e) {
-        throw e.message!;
+        if (!completer.isCompleted) completer.completeError(e.message!);
       },
       codeSent: (String verId, int? resendToken) {
-        verificationId = verId;
+        if (!completer.isCompleted) completer.complete(verId);
       },
       codeAutoRetrievalTimeout: (String verId) {
-        verificationId = verId;
+        if (!completer.isCompleted) completer.complete(verId);
       },
     );
-    return verificationId;
+
+    return completer.future;
   }
 
   // Verify OTP
