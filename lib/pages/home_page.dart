@@ -20,7 +20,6 @@ class HomePage extends StatelessWidget {
             OutlinedButton(
               onPressed: () async {
                 await AuthService.logout();
-
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (_) => const SizedBox.shrink()),
@@ -28,7 +27,7 @@ class HomePage extends StatelessWidget {
                 );
               },
               child: const Text("Logout"),
-            ),
+            )
           ],
         ),
       ),

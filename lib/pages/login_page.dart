@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:telephony/telephony.dart';
-import '../controllers/auth_service.dart';
+import 'package:phone_auth_firebase/controllers/auth_service.dart';
+import 'package:sms_autofill/sms_autofill.dart';
+import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,30 +10,31 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
+class _LoginPageState extends State<LoginPage> with CodeAutoFill {
+  TextEditingController _phoneController = TextEditingController();
+  TextEditingController _otpController = TextEditingController();
+
+  String? _verificationId;
   final _phoneFormKey = GlobalKey<FormState>();
   final _otpFormKey = GlobalKey<FormState>();
 
-  String? verificationId;
-
-  final Telephony telephony = Telephony.instance;
-
   @override
-  void dispose() {
-    _phoneController.dispose();
-    _otpController.dispose();
-    super.dispose();
+  void codeUpdated() {
+    setState(() {
+      _otpController.text = code!;
+    });
+
+    if (code!.length == 6) _submitOtp();
   }
 
-  Future<void> sendOtp() async {
+  Future<void> _sendOtp() async {
     if (!_phoneFormKey.currentState!.validate()) return;
+    // Changed prefix to +254 for Kenya
+    String phone = "+254${_phoneController.text}";
 
-    String phone = "+91${_phoneController.text}";
     try {
-      verificationId = await AuthService.sendOtp(phone);
-      _listenSms();
+      _verificationId = await AuthService.sendOtp(phone);
+      await SmsAutoFill().listenForCode(); // Auto-fill listener
       _showOtpDialog();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -42,15 +43,16 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> verifyOtp() async {
+  Future<void> _submitOtp() async {
     if (!_otpFormKey.currentState!.validate()) return;
 
     try {
       await AuthService.verifyOtp(
-        verificationId: verificationId!,
+        verificationId: _verificationId!,
         smsCode: _otpController.text,
       );
-      Navigator.of(context).pop(); // close dialog
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const HomePage()));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Invalid OTP: $e")),
@@ -58,77 +60,98 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _listenSms() {
-    telephony.listenIncomingSms(
-      listenInBackground: false,
-      onNewMessage: (SmsMessage message) {
-        final body = message.body ?? "";
-        final otp = RegExp(r'\d{6}').stringMatch(body);
-        if (otp != null) {
-          setState(() => _otpController.text = otp);
-          Future.delayed(const Duration(milliseconds: 600), verifyOtp);
-        }
-      },
-    );
-  }
-
   void _showOtpDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Verify OTP"),
-        content: Form(
-          key: _otpFormKey,
-          child: TextFormField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: "6-digit OTP"),
-            validator: (v) =>
-            (v == null || v.length != 6) ? "Enter 6-digit OTP" : null,
-          ),
+      builder: (_) => AlertDialog(
+        title: const Text("OTP Verification"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Enter 6-digit OTP"),
+            const SizedBox(height: 10),
+            Form(
+              key: _otpFormKey,
+              child: PinFieldAutoFill(
+                codeLength: 6,
+                controller: _otpController,
+                decoration: UnderlineDecoration(
+                  textStyle: const TextStyle(fontSize: 20),
+                  colorBuilder: FixedColorBuilder(Colors.grey),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: verifyOtp,
-            child: const Text("Submit"),
-          ),
+          TextButton(onPressed: _submitOtp, child: const Text("Submit")),
         ],
       ),
     );
   }
 
   @override
+  void dispose() {
+    cancel();
+    _phoneController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.asset("images/login.png", height: 300),
-              Form(
-                key: _phoneFormKey,
-                child: TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    prefixText: "+91 ",
-                    labelText: "Phone Number",
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                  (v == null || v.length != 10) ? "Enter valid number" : null,
+              Expanded(
+                  child: Image.asset("images/login.png", fit: BoxFit.cover)),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Welcome Back 👋",
+                        style:
+                        TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    const Text("Enter your phone number to continue."),
+                    const SizedBox(height: 20),
+                    Form(
+                      key: _phoneFormKey,
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          // Changed prefix to +254 for Kenya
+                          prefixText: "+254 ",
+                          labelText: "Phone Number",
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) =>
+                        (v == null || v.length != 9) // Kenyan numbers are 9 digits after +254
+                            ? "Enter 9 digits"
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _sendOtp,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.yellow,
+                            foregroundColor: Colors.black),
+                        child: const Text("Send OTP"),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: sendOtp,
-                child: const Text("Send OTP"),
               ),
             ],
           ),
