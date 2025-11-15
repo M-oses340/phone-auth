@@ -1,10 +1,10 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'firebase_options.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
+import 'firebase_options.dart'; // replace with your generated file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,17 +21,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Phone Auth Simple",
+      debugShowCheckedModeBanner: false,
+      title: "Phone Auth",
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
       ),
-      home: StreamBuilder(
+      home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (snapshot.hasData) {
             return const HomePage();
@@ -39,7 +41,6 @@ class MyApp extends StatelessWidget {
           return const LoginPage();
         },
       ),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
